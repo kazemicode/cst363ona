@@ -1,0 +1,7 @@
+userid root               # userid, password for mysql 
+password cst363SP2019
+debug 0                   # 0=none  1=summary 2=detail
+worker 127.0.0.1  8000
+worker 127.0.0.1  8001
+worker 127.0.0.1  8002
+worker 127.0.0.1  8003 
