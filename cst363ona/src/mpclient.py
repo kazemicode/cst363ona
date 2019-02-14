@@ -115,23 +115,6 @@ class Coordinator:
         rc = self.recv(self.sockets[index])
         print("getRowByKey data=", rc)
 
-    
-    # def getRowByNonKey(self, tableName, whereClause):
-        # sql = 'select * from '+tableName+' where '+whereClause
-        # print("getRowByNonKey", tableName, whereClause)
-        # for sock in self.sockets:
-           # self.send(sock,sql)
-           # status_msg=self.recv(sock)
-           # if DEBUG >= 1:
-                # print("send", sql, "received",status_msg)
-           # status_msg = status_msg.strip()  # remove whitespace from front and endswith
-           # index = 0
-           # while index < len(status_msg) and status_msg[index]=='(':
-                # index_next = status_msg.find(')',index)
-                # print(status_msg[index+1:index_next])
-                # index = index_next+1
-        # print("getRowByNonKey end")
-           
  
 #  main 
 
@@ -157,7 +140,6 @@ for empid in range(1,5):
     c.getRowByKey("select * from emp where empid="+str(empid), empid)
     
 # example of find by non key
-# c.getRowByNonKey("emp", "dept=100 or salary > 100000 or name like '%7' ")
 c.sendToAll("reduce select * from emp where dept=100 or salary > 100000 or name like '%7'")
 
 
