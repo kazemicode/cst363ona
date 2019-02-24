@@ -1,4 +1,4 @@
-# HRclient.py
+# coordinator.py
 import socket, random
 
 USERID = ''
@@ -31,10 +31,10 @@ class Coordinator:
     def __init__(self):
         self.sockets = []
         # connect to all workers
-        for hostname, port in zip(hosts, ports):
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((hostname, port))
-            self.sockets.append(sock)
+        for hostname, port in zip(hosts, ports):  # ad-hoc tuple to iterate through hosts/ports
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # create socket object using ipv4 addresses and
+            sock.connect((hostname, port))  # sequenced 2way connection-based bytestreams
+            self.sockets.append(sock)  # connect each node given hostname / port
             if DEBUG >= 2:
                 print("Connected to", hostname, port)
 
@@ -119,34 +119,41 @@ class Coordinator:
 
 readConfig()
 
-# create test data and write to employee.data, department.data and manager.data
-file_emp = open("employee.data", "w")
-file_dept = open("department.data", "w")
-# create 1000 departments and employees who are managers of the departments
-for dept in range(1, 1001):
-    empid = 2 * dept
-    name = "John Manager" + str(dept)
-    dept_name = "Dept #" + str(dept)
-    salary = random.randint(100000, 150000)
-    file_emp.write(str(empid) + ', "' + name + '", ' + str(dept) + ', ' + str(salary) + '\n')
-    file_dept.write(str(dept) + ', "' + dept_name + '", ' + str(empid) + '\n')
-
-# now generate 50000 other employees and assign to random departments
-for empid in range(3000, 53000):
-    name = "Joe Employee" + str(empid)
-    dept = random.randint(1, 1000)
-    salary = random.randint(60000, 250000)
-    file_emp.write(str(empid) + ', "' + name + '", ' + str(dept) + ', ' + str(salary) + '\n')
-file_emp.close()
-file_dept.close()
-
 c = Coordinator()
-c.sendToAll("drop table if exists employee")
-c.sendToAll("drop table if exists department")
-c.sendToAll("create table employee (empid int primary key, name char(20), dept int, salary double)")
-c.sendToAll("create table department (dept int primary key, dept_name char(20), mgr_id int)")
-print("Loading employee table.  This will take a few minutes.")
-c.loadTable("employee", "employee.data")
-print("Loading department table")
-c.loadTable("department", "department.data")
+
+
+# create temp table
+c.sendToAll("drop table if exists tempemp ")
+c.sendToAll("drop table if exists tempmgr ")
+c.sendToAll("create table tempemp (dept int, empid int, name char(20), salary double)")
+c.sendToAll("create table tempmgr (dept int, name char(20), salary double)")
+
+# map phase # 1
+# select info for dept-indexed employee id, name, salary
+c.sendToAll("map select dept, empid, name, salary from employee order by dept")
+
+# shuffle phase
+# the result from prior map phase is distributed to servers
+# and inserted into temp table.
+# use {} as place holder for data values as shown below.
+c.sendToAll("shuffle insert into tempemp  values {}")
+
+# map phase # 2
+# select info for dept-indexed manager name and manager salary
+c.sendToAll("map select d.dept, name, salary from department d join employee e on e.dept = d.dept where e.empid = d.mgr_id")
+
+# shuffle phase # 2
+c.sendToAll("shuffle insert into tempmgr  values {}")
+
+# reduce phase
+# execute the select and return result to client.
+print("Reduce result set")
+c.sendToAll("reduce select empid, t1.name, t1.salary, t1.dept, t2.name as mgr_name, t2.salary as mgr_salary \
+ FROM tempemp t1 JOIN tempmgr t2 ON t1.dept = t2.dept WHERE t1.salary > t2.salary")
+
+
+# clean up - delete temp table
+c.sendToAll("drop table if exists tempemp ")
+c.sendToAll("drop table if exists tempmgr ")
+
 c.close()

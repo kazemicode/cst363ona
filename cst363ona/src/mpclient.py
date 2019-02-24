@@ -29,10 +29,10 @@ class Coordinator:
     def __init__(self):
        self.sockets = []     
        # connect to all workers
-       for hostname, port in zip(hosts, ports):
-           sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-           sock.connect((hostname, port))
-           self.sockets.append(sock)
+       for hostname, port in zip(hosts, ports): # ad-hoc tuple to iterate through hosts/ports
+           sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket object using ipv4 addresses and
+           sock.connect((hostname, port))                           # sequenced 2way connection-based bytestreams
+           self.sockets.append(sock)                                # connect each node given hostname / port
            if DEBUG >=2:
                 print("Connected to", hostname, port)
        
@@ -120,32 +120,32 @@ class Coordinator:
 
 readConfig()
 
-# create test data and write to emp.data file
+# # create test data and write to emp.data file
 # f = open("emp.data", "w")
 # for empid in range(1,100):
-    # dept = random.randint(100, 105);
-    # salary = random.randint(90000, 250000)
-    # name = 'Joe Employee'+str(empid)
-    # line = str(empid)+', "'+name+'", '+str(dept)+', '+str(salary)+'\n'
-    # f.write(line)
+#     dept = random.randint(100, 105);
+#     salary = random.randint(90000, 250000)
+#     name = 'Joe Employee'+str(empid)
+#     line = str(empid)+', "'+name+'", '+str(dept)+', '+str(salary)+'\n'
+#     f.write(line)
 # f.close()
-
+#
 c = Coordinator()
 c.sendToAll("drop table if exists emp")
-c.sendToAll("create table emp (empid int primary key, name char(20), dept int, salary double)") 
+c.sendToAll("create table emp (empid int primary key, name char(20), dept int, salary double)")
 c.loadTable("emp", "emp.data")
 
 # example of find by key
 for empid in range(1,5):
     c.getRowByKey("select * from emp where empid="+str(empid), empid)
-    
+
 # example of find by non key
 c.sendToAll("reduce select * from emp where dept=100 or salary > 100000 or name like '%7'")
 
 
 # example of map-shuffle-reduce
 
-# crate temp table
+# create temp table
 c.sendToAll("drop table if exists tempdept ")
 c.sendToAll("create table tempdept (dept int, salary double)")
 
@@ -158,7 +158,7 @@ c.sendToAll("map select dept, salary from emp ")
 # the result from prior map phase is distributed to servers
 # and inserted into temp table.
 # use {} as place holder for data values as shown below.
-c.sendToAll("shuffle insert into tempdept  values {}") 
+c.sendToAll("shuffle insert into tempdept  values {}")
 
 # reduce phase
 # execute the select and return result to client.

@@ -1,4 +1,4 @@
-# HRclient.py
+# coordinator.py
 import socket, random
 
 USERID = ''
@@ -31,10 +31,10 @@ class Coordinator:
     def __init__(self):
         self.sockets = []
         # connect to all workers
-        for hostname, port in zip(hosts, ports):
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((hostname, port))
-            self.sockets.append(sock)
+        for hostname, port in zip(hosts, ports):  # ad-hoc tuple to iterate through hosts/ports
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # create socket object using ipv4 addresses and
+            sock.connect((hostname, port))  # sequenced 2way connection-based bytestreams
+            self.sockets.append(sock)  # connect each node given hostname / port
             if DEBUG >= 2:
                 print("Connected to", hostname, port)
 
@@ -119,34 +119,36 @@ class Coordinator:
 
 readConfig()
 
-# create test data and write to employee.data, department.data and manager.data
-file_emp = open("employee.data", "w")
-file_dept = open("department.data", "w")
-# create 1000 departments and employees who are managers of the departments
-for dept in range(1, 1001):
-    empid = 2 * dept
-    name = "John Manager" + str(dept)
-    dept_name = "Dept #" + str(dept)
-    salary = random.randint(100000, 150000)
-    file_emp.write(str(empid) + ', "' + name + '", ' + str(dept) + ', ' + str(salary) + '\n')
-    file_dept.write(str(dept) + ', "' + dept_name + '", ' + str(empid) + '\n')
+# create test data and write to student.data file
+f = open("student.data", "w")
+majorlist = ['Biology', 'Business', 'CS', 'Statistics']
+for id in range(1,100):
+    major = majorlist[random.randint(0, len(majorlist) - 1)]
+    gpa = round(random.uniform(2.5, 4.0), 2)
+    name = 'Jane Student'+str(id)
+    line = str(id)+', "'+name+'", '+'"'+major+'", '+str(gpa)+'\n'
+    f.write(line)
+f.close()
 
-# now generate 50000 other employees and assign to random departments
-for empid in range(3000, 53000):
-    name = "Joe Employee" + str(empid)
-    dept = random.randint(1, 1000)
-    salary = random.randint(60000, 250000)
-    file_emp.write(str(empid) + ', "' + name + '", ' + str(dept) + ', ' + str(salary) + '\n')
-file_emp.close()
-file_dept.close()
+
 
 c = Coordinator()
-c.sendToAll("drop table if exists employee")
-c.sendToAll("drop table if exists department")
-c.sendToAll("create table employee (empid int primary key, name char(20), dept int, salary double)")
-c.sendToAll("create table department (dept int primary key, dept_name char(20), mgr_id int)")
-print("Loading employee table.  This will take a few minutes.")
-c.loadTable("employee", "employee.data")
-print("Loading department table")
-c.loadTable("department", "department.data")
+c.sendToAll("drop table if exists student")
+c.sendToAll("create table student (id int primary key, name char(20), major char(10), gpa double)")
+c.loadTable("student", "student.data")
+
+
+
+# example of find by key, where the key on id exists
+c.getRowByKey("select * from student where id=27", 27)
+
+# example of find by key, where the key on id does not exist
+c.getRowByKey("select * from student where id=9999", 9999)
+# example of find by key, where the key on major is 'Biology'
+c.getRowByKey("select * from student where major= 'Biology'", 'Biology')
+
+# example of find by non key
+c.sendToAll("reduce select * from student where gpa >= 3.2")
+
+
 c.close()
