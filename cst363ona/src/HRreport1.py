@@ -125,12 +125,12 @@ c = Coordinator()
 # create temp table
 c.sendToAll("drop table if exists tempdept ")
 c.sendToAll("drop table if exists tempmgr ")
-c.sendToAll("create table tempdept (dept int, salary double)")
+c.sendToAll("create table tempdept (dept int, name char(20), empid int, salary double)")
 c.sendToAll("create table tempmgr (dept int, name char(20))")
 
 # map phase # 1
 # select info for dept indexed salary, used for min, max, avg and employee count
-c.sendToAll("map select dept, salary from employee order by dept")
+c.sendToAll("map select dept, name, empid, salary from employee order by dept")
 
 # shuffle phase
 # the result from prior map phase is distributed to servers
@@ -140,18 +140,19 @@ c.sendToAll("shuffle insert into tempdept  values {}")
 
 # map phase # 2
 # select info for manager name indexed by dept
-c.sendToAll("map select d.dept, name from department d join employee e on e.dept = d.dept where e.empid = d.mgr_id")
+c.sendToAll("map select d.dept, e.name from department d join tempdept e on e.dept = d.dept where e.empid = d.mgr_id")
 
 # shuffle phase # 2
 c.sendToAll("shuffle insert into tempmgr  values {}")
 
 # reduce phase
 # execute the select and return result to client.
+
 print("Reduce result set")
-c.sendToAll("reduce select t1.dept, name, avg(salary), min(salary), max(salary), count(*) \
+c.sendToAll("reduce select t1.dept, t2.name, avg(salary), min(salary), max(salary), count(*) \
 FROM tempdept t1 JOIN tempmgr t2 \
 ON t2.dept = t1.dept \
-GROUP BY name, t1.dept")
+GROUP BY t2.name, t2.dept ORDER BY t2.dept")
 
 
 

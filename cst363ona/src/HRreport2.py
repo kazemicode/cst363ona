@@ -140,7 +140,7 @@ c.sendToAll("shuffle insert into tempemp  values {}")
 
 # map phase # 2
 # select info for dept-indexed manager name and manager salary
-c.sendToAll("map select d.dept, name, salary from department d join employee e on e.dept = d.dept where e.empid = d.mgr_id")
+c.sendToAll("map select d.dept, name, salary from department d join tempemp e on e.dept = d.dept where e.empid = d.mgr_id")
 
 # shuffle phase # 2
 c.sendToAll("shuffle insert into tempmgr  values {}")
